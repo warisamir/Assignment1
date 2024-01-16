@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>
+    <title>Product Listing</title>
+    <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border: 1px solid black;
+        padding: 8px;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <h1>Product Listing</h1>
+    <table>
+      <tr>
+        <th>Product Name</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Gift Wrap</th>
+      </tr>
+      <tr>
+        <td>Product A</td>
+        <td>$20</td>
+        <td><input type="number" id="quantityA" min="0" value="0"></td>
+        <td><input type="checkbox" id="giftWrapA"></td>
+      </tr>
+      <tr>
+        <td>Product B</td>
+        <td>$40</td>
+        <td><input type="number" id="quantityB" min="0" value="0"></td>
+        <td><input type="checkbox" id="giftWrapB"></td>
+      </tr>
+      <tr>
+        <td>Product C</td>
+        <td>$50</td>
+        <td><input type="number" id="quantityC" min="0" value="0"></td>
+        <td><input type="checkbox" id="giftWrapC"></td>
+      </tr>
+    </table>
+
+    <button onclick="calculateTotal()">Submit</button>
+
+    <h2>Order Details</h2>
+
+    <table id="orderDetails">
+      <tr>
+        <th>Product</th>
+        <th>Quantity</th>
+        <th>Total Amount</th>
+      </tr>
+    </table>
+
+    <h2>Summary</h2>
+
+    <p id="subtotal"></p>
+    <p id="discount"></p>
+    <p id="shipping"></p>
+    <p id="giftWrap"></p>
+    <p id="total"></p>
+
+    <script>
+      function calculateTotal()
+      {
+        const products = [
+          { name: 'Product A', price: 20 },
+          { name: 'Product B', price: 40 },
+          { name: 'Product C', price: 50 }
+        ];
+
+        const quantityA = parseInt(document.getElementById('quantityA').value);
+        const quantityB = parseInt(document.getElementById('quantityB').value);
+        const quantityC = parseInt(document.getElementById('quantityC').value);
+
+        const giftWrapA = document.getElementById('giftWrapA').checked;
+        const giftWrapB = document.getElementById('giftWrapB').checked;
+        const giftWrapC = document.getElementById('giftWrapC').checked;
+
+        const items = [
+          { ...products[0], quantity: quantityA, giftWrap: giftWrapA },
+          { ...products[1], quantity: quantityB, giftWrap: giftWrapB },
+          { ...products[2], quantity: quantityC, giftWrap: giftWrapC }
+        ];
+
+        const filteredItems = items.filter(item => item.quantity > 0);
+        const cartTotal = filteredItems.reduce((total, item) => total + item.price * item.quantity, 0);
+        let discount = [];
+        //starting of discount rules
+        if (cartTotal > 200)
+        {
+          discount.push({ discountName: 'flat_10_discount', amount: 10 });
+        }
+        if (quantityA > 10 || quantityB > 10 || quantityC > 10)
+        {
+          const discountAmount = (quantityA > 10 ? products[0].price * 0.05 * quantityA : 0) +
+            (quantityB > 10 ? products[1].price * 0.05 * quantityB : 0) +
+            (quantityC > 10 ? products[2].price * 0.05 * quantityC : 0);
+          discount.push({ discountName: 'bulk_5_discount', amount: discountAmount })
+        }
+        if (quantityA + quantityB + quantityC > 20)
+        {
+          discount.push({ discountName: 'bulk_10_discount', amount: 0.1 * cartTotal });
+        }
+        if (quantityA + quantityB + quantityC > 30 && (quantityA > 15 || quantityB > 15 || quantityC > 15))
+        {
+          const discountAmount = (quantityA > 15 ? products[0].price * 0.5 * (quantityA - 15) : 0) +
+            (quantityB > 15 ? products[1].price * 0.5 * (quantityB - 15) : 0) +
+            (quantityC > 15 ? products[2].price * 0.5 * (quantityC - 15) : 0)
+          discount.push({ discountName: 'tiered_50_discount', amount: discountAmount });
+        }
+        //ending of discount rules
+        //finding maximum discount
+        const maxDiscount = discount.length > 0 ? discount.reduce((maxDiscount, currentDiscount) =>
+        {
+          if (currentDiscount.amount > maxDiscount.amount)
+          {
+            return currentDiscount;
+          } else
+          {
+            return maxDiscount;
+          }
+        }) : { discountName: "Not available", amount: 0 };
+        //-----------------------//
+
+        //calculating shipping fee
+        const shippingFee = Math.ceil((quantityA + quantityB + quantityC) / 10) * 5;
+        //------------------------//
+
+        //calculating gift wrap fee
+        const giftWrapFee = filteredItems.reduce((total, item) => total + (item.giftWrap ? item.quantity : 0), 0);
+        //----------------------//
+
+        //calculating total amount
+        const total = cartTotal - maxDiscount.amount + shippingFee + giftWrapFee;
+        //----------------------//
+
+        displayOrderDetails(filteredItems);
+        displaySummary(cartTotal, maxDiscount, shippingFee, giftWrapFee, total);
+      }
+
+      function displayOrderDetails(items)
+      {
+        const table = document.getElementById('orderDetails');
+
+        // Clearing previous order details
+        while (table.rows.length > 1)
+        {
+          table.deleteRow(1);
+        }
+
+        // Display new order details
+        items.forEach(item =>
+        {
+          const row = table.insertRow();
+          const nameCell = row.insertCell();
+          const quantityCell = row.insertCell();
+          const totalAmountCell = row.insertCell();
+
+          nameCell.innerHTML = item.name;
+          quantityCell.innerHTML = item.quantity;
+          totalAmountCell.innerHTML = '$' + item.price * item.quantity;
+        });
+      }
+
+      function displaySummary(cartTotal, maxDiscount, shippingFee, giftWrapFee, total)
+      {
+        document.getElementById('subtotal').innerHTML = 'Subtotal: $' + cartTotal;
+        document.getElementById('discount').innerHTML = 'Discount (' + maxDiscount.discountName + '): $' + maxDiscount.amount;
+        document.getElementById('shipping').innerHTML = 'Shipping Fee: $' + shippingFee;
+        document.getElementById('giftWrap').innerHTML = 'Gift Wrap Fee: $' + giftWrapFee;
+        document.getElementById('total').innerHTML = 'Total: $' + total;
+      }
+    </script>
+  </body>
+
+</html>
